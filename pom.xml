@@ -17,7 +17,7 @@
     </dependencies>
 
     <build>
-        <finalName>galacticos</finalName>
+        <finalName>mundial</finalName>
         <plugins>
             <!-- Maven Assembly Plugin -->
             <plugin>
@@ -32,7 +32,7 @@
                     <!-- MainClass in mainfest make a executable jar -->
                     <archive>
                         <manifest>
-                            <mainClass>Real</mainClass>
+                            <mainClass>Mundial</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
