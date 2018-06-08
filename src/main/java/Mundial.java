@@ -1,7 +1,5 @@
-import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
+import org.openqa.selenium.Point;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.interactions.Actions;
@@ -15,19 +13,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
 
 public class Mundial {
 
   private static WebDriver driver;
 
   public static final String URL = "https://tickets.fifa.com/requestSummary";
-
-//  public static final String TEAM_ID = "ENG";
-//  public static final String MATCH_ID = "14";
 
   public static String teamId;
   public static String matchId;
@@ -37,6 +30,29 @@ public class Mundial {
   private static boolean isTicket = false;
 
   private static void setUp() throws IOException {
+    readInputValues();
+    setupBrowser();
+
+    driver.get(URL);
+    logMessage("Otwieram przeglądarkę");
+    logMessage("Masz 2 minuty na zalogowanie");
+
+    maximizeBrowser();
+    waitForBuyButton();
+    //minimizeBrowser();
+
+    isSetupDone = true;
+  }
+
+  private static void setupBrowser() {
+//    System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver.exe");
+    System.setProperty("webdriver.chrome.driver", "chromedriver.exe");
+    driver = new ChromeDriver();
+//    System.setProperty("webdriver.firefox.marionette", "./src/main/resources/geckodriver.exe");
+//    driver = new FirefoxDriver();
+  }
+
+  private static void readInputValues() throws IOException {
     BufferedReader br = null;
 
     br = new BufferedReader(new InputStreamReader(System.in));
@@ -47,39 +63,34 @@ public class Mundial {
     System.out.print("Podaj numer meczu: ");
     matchId = br.readLine();
 
-    System.out.print("Podaj czas odświeżania (w sekundach): ");
-    time = br.readLine();
+//    System.out.print("Podaj czas odświeżania (w sekundach): ");
+//    time = br.readLine();
 
     br.close();
-
-//    System.setProperty("webdriver.chrome.driver", "./src/main/resources/chromedriver.exe");
-    System.setProperty("webdriver.chrome.driver", "chromedriver.exe");
-    driver = new ChromeDriver();
-//    System.setProperty("webdriver.firefox.marionette", "./src/main/resources/geckodriver.exe");
-//    driver = new FirefoxDriver();
   }
 
   public static void main(String[] args) throws InterruptedException, IOException {
     if (!isSetupDone) {
       setUp();
-      logMessage("Otwieram przeglądarkę");
-      logMessage("Masz 2 minuty na zalogowanie");
     }
     while (!isTicket) {
       lookForTickets();
-      long timeout = Long.valueOf(time) * 1000;
-      Thread.sleep(timeout);
+
+//      long timeout = Long.valueOf(time) * 1000;
+//      Thread.sleep(timeout);
     }
   }
 
-  private static void lookForTickets() {
-    driver.navigate().to(URL);
-
-    logMessage("Wchodze na stronę");
+  private static void lookForTickets() throws InterruptedException {
+    driver.navigate().refresh();
+    logMessage("Odświeżam stronę");
 
     By linkToProductNavBar = By.id("linkToProductNavBar");
-    new WebDriverWait(driver, 120).until(ExpectedConditions.elementToBeClickable(linkToProductNavBar));
-    driver.findElement(linkToProductNavBar).click();
+    pauseInSeconds(1);
+    new WebDriverWait(driver, 60).until(ExpectedConditions.invisibilityOfElementLocated(By.id("ngdialog1")));
+    new WebDriverWait(driver, 60).until(ExpectedConditions.elementToBeClickable(linkToProductNavBar));
+    WebElement buyTicketsButton = driver.findElement(linkToProductNavBar);
+    buyTicketsButton.click();
 
     By clearFiltersButton = By.xpath("//button[@title='Clear filters']");
     new WebDriverWait(driver, 10).until(ExpectedConditions.visibilityOfElementLocated(clearFiltersButton));
@@ -97,48 +108,17 @@ public class Mundial {
     checkAvailability(productBox);
   }
 
-  private static void checkAvailability(WebElement productBox) {
-    List<WebElement> wrapperCategories = productBox.findElements(By.id("wrapperCategory"));
-
-    //TODO odwrócić listę żeby szukanie zaczynało sie od najtańszej kategorii
-
-    for (WebElement wc : wrapperCategories) {
-      WebElement categoryItem = wc.findElement(By.className("categoryItem"));
-      List<WebElement> divs = categoryItem.findElements(By.tagName("div"));
-
-      String availText = divs.get(2).getText();
-      if (!availText.equals(" ")) {
-        alert();
-        isTicket = true;
-        break;
-      }
-    }
-    if (!isTicket) {
-      logMessage("Nie ma biletów :(");
-    }
-  }
-
-  private static void alert() {
-    logMessage("BILETY!!!");
-    openNewTab();
-
-    ArrayList<String> tabs = new ArrayList<String>(driver.getWindowHandles());
-    driver.switchTo().window(tabs.get(tabs.size() - 1));
-
-    driver.get("http://www.wavsource.com/snds_2018-01-14_3453803176249356/sfx/call_to_arms.wav");
-  }
-
-  private static void openNewTab() {
-    //    Actions actions = new Actions(driver);
-//    actions.keyDown(Keys.CONTROL).sendKeys("t").keyUp(Keys.CONTROL).build().perform();
-    Robot rb = null;
+  private static void pauseInSeconds(int sec) {
     try {
-      rb = new Robot();
-    } catch (AWTException e) {
+      Thread.sleep(sec * 1000);
+    } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    rb.keyPress(KeyEvent.VK_CONTROL);
-    rb.keyPress(KeyEvent.VK_T);
+  }
+
+  private static void waitForBuyButton() {
+    By linkToProductNavBar = By.id("linkToProductNavBar");
+    new WebDriverWait(driver, 3600).until(ExpectedConditions.visibilityOfElementLocated(linkToProductNavBar));
   }
 
   private static WebElement findProductBoxForGivenMatch() {
@@ -152,6 +132,96 @@ public class Mundial {
       }
     }
     return null;
+  }
+
+  private static void checkAvailability(WebElement productBox) throws InterruptedException {
+    List<WebElement> wrapperCategories = productBox.findElements(By.id("wrapperCategory"));
+
+    Collections.reverse(wrapperCategories);
+
+    for (WebElement wc : wrapperCategories) {
+      WebElement categoryItem = wc.findElement(By.className("categoryItem"));
+      List<WebElement> divs = categoryItem.findElements(By.tagName("div"));
+
+      String availText = divs.get(2).getText();
+      if (!availText.equals(" ")) {
+        logMessage("BILETY!!!");
+        selectTickets(categoryItem);
+        alert();
+        isTicket = true;
+        break;
+      }
+    }
+    if (!isTicket) {
+      logMessage("Nie ma biletów :(");
+    }
+  }
+
+  private static void selectTickets(WebElement categoryItem) {
+    logMessage("Wybieram bilety");
+
+    JavascriptExecutor js = (JavascriptExecutor) Mundial.driver;
+    js.executeScript("arguments[0].scrollIntoView();", categoryItem);
+    pauseInSeconds(1);
+    new WebDriverWait(driver, 10).until(ExpectedConditions.elementToBeClickable(categoryItem));
+    categoryItem.click();
+    List<WebElement> selects = driver.findElements(By.tagName("select"));
+    Select ticketsToSelect = new Select(selects.get(3));
+    ticketsToSelect.selectByValue("number:2");
+
+    By addToShoppingBasket = By.xpath("//div[contains(text(),'Add to your Shopping Basket')]");
+    WebElement addToBasket = driver.findElement(addToShoppingBasket);
+    js.executeScript("arguments[0].scrollIntoView();", addToBasket);
+    pauseInSeconds(1);
+    new WebDriverWait(driver, 10).until(ExpectedConditions.elementToBeClickable(addToShoppingBasket));
+    addToBasket.click();
+  }
+
+  private static void alert() throws InterruptedException {
+    //maximizeBrowser();
+    openNewTab();
+
+    ArrayList<String> tabs = new ArrayList<String>(driver.getWindowHandles());
+    String newTab = tabs.get(tabs.size() - 1);
+    driver.switchTo().window(newTab);
+    driver.get("http://www.wavsource.com/snds_2018-01-14_3453803176249356/sfx/call_to_arms.wav");
+  }
+
+  private static void maximizeBrowser() {
+    driver.manage().window().maximize();
+  }
+
+  private static void openNewTab() {
+    //    Actions actions = new Actions(driver);
+//    actions.keyDown(Keys.CONTROL).sendKeys("t").keyUp(Keys.CONTROL).build().perform();
+    Robot rb = null;
+    try {
+      rb = new Robot();
+    } catch (AWTException e) {
+      e.printStackTrace();
+    }
+    rb.keyPress(KeyEvent.VK_CONTROL);
+    rb.keyPress(KeyEvent.VK_T);
+    rb.keyRelease(KeyEvent.VK_CONTROL);
+    rb.keyRelease(KeyEvent.VK_T);
+  }
+
+  private static void minimizeBrowser() {
+//    Robot rb = null;
+//    try {
+//      rb = new Robot();
+//    } catch (AWTException e) {
+//      e.printStackTrace();
+//    }
+//    rb.keyPress(KeyEvent.VK_ALT);
+//    rb.keyPress(KeyEvent.VK_SPACE);
+//    rb.keyRelease(KeyEvent.VK_ALT);
+//    rb.keyRelease(KeyEvent.VK_SPACE);
+//    rb.keyPress(KeyEvent.VK_M);
+//    rb.keyRelease(KeyEvent.VK_M);
+//    rb.keyPress(KeyEvent.VK_ENTER);
+//    rb.keyRelease(KeyEvent.VK_ENTER);
+    driver.manage().window().setPosition(new Point(0, -2000));
   }
 
   private static void logMessage(String s) {
